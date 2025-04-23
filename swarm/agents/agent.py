@@ -500,7 +500,7 @@ class Agent(Observer):
                 self.logger.error(traceback.format_exc())
 
     @staticmethod
-    def get_system_info():
+    def get_system_info(): # Get resources somewhere else
         # Get CPU information
         cpu_count = psutil.cpu_count()
 
@@ -777,7 +777,7 @@ class Agent(Observer):
                     ready_queue_load = self.compute_ready_queue_load()
                     if ready_queue_load < self.ready_queue_threshold and self.can_schedule_job(job):
                         self.queues.selected_queue.remove_job(job.get_job_id())
-                        self.schedule_job(job)
+                        self.schedule_job(job) # Here one could add the output call (decisions)
                     else:
                         time.sleep(0.5)
 

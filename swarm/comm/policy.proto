@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package policy;
+
+service PolicyService {
+  rpc Initialize(InitializeOrStopRequest) returns (InitializeOrStopResponse);
+  rpc Decide (DecideRequest) returns (DecideResponse);
+  rpc Stop(InitializeOrStopRequest) returns (InitializeOrStopResponse);
+}
+
+message InitializeOrStopRequest {
+  string policy_name = 1;
+}
+
+message InitializeOrStopResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message DecideRequest {
+  repeated string roleNames = 1;
+  repeated IndicatorLevel levels = 2;
+  repeated Resource resources = 3;
+}
+
+message DecideResponse {
+  map<string, bool> decisions = 1;
+}
+
+message IndicatorLevel {
+  string name = 1;
+  float value = 2;
+  bool isMet = 3;
+  float threshold = 4;
+  string associatedRole = 5;
+}
+
+message Resource {
+  string name = 1;
+  float value = 2;
+}

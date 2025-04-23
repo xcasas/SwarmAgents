@@ -105,7 +105,7 @@ class SwarmAgent(Agent):
         while not self.shutdown:
             try:
                 processed = 0
-                for job in self.queues.job_queue.get_jobs():
+                for job in self.queues.job_queue.get_jobs(): # This queue is the one that should be changed.
                     if job.is_complete():
                         completed_jobs += 1
                         continue

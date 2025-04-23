@@ -180,6 +180,9 @@ class SwarmAgent(Agent):
                 self.logger.error(traceback.format_exc())
         self.logger.info(f"Agent: {self} stopped with restarts: {self.restart_job_selection_cnt}!")
 
+    def start_consensus(self):
+        print("Agent start consensus!")
+
     def __compute_cost_matrix(self, jobs: List[Job], caps_jobs_selected: Capacities) -> np.ndarray:
         """
         Compute the cost matrix where rows represent agents and columns represent jobs.
