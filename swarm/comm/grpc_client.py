@@ -25,33 +25,40 @@ import grpc
 import json
 import time
 
-from swarm.comm import consensus_pb2_grpc, consensus_pb2
+from swarm.comm import consensus_pb2_grpc, consensus_pb2, policy_pb2, policy_pb2_grpc
+from enum import Enum
 
+class ServiceType(Enum):
+    CONSENSUS = "consensus"
+    COLMENA = "colmena"
 
 class GrpcClientManager:
     def __init__(self):
         self.stub_cache = {}  # (host, port) -> (stub, channel)
 
-    def _create_stub(self, host, port):
+    def _create_stub(self, host, port, type):
         channel = grpc.insecure_channel(f"{host}:{port}")
-        stub = consensus_pb2_grpc.ConsensusServiceStub(channel)
+        if type == ServiceType.CONSENSUS:
+            stub = consensus_pb2_grpc.ConsensusServiceStub(channel)
+        elif type == ServiceType.COLMENA:
+            stub = policy_pb2_grpc.ColmenaServiceStub(channel)
         self.stub_cache[(host, port)] = (stub, channel)
         return stub
 
-    def get_stub(self, host, port):
+    def get_stub(self, host, port, type):
         key = (host, port)
         if key in self.stub_cache:
             stub, channel = self.stub_cache[key]
             state = channel._channel.check_connectivity_state(True)
             if state != grpc.ChannelConnectivity.READY:
                 self.stub_cache.pop(key)
-                return self._create_stub(host, port)
+                return self._create_stub(host, port, type)
             return stub
         else:
-            return self._create_stub(host, port)
+            return self._create_stub(host, port, type)
 
     def send_consensus_message(self, host, port, message_dict):
-        stub = self.get_stub(host, port)
+        stub = self.get_stub(host, port, ServiceType.CONSENSUS)
         request = consensus_pb2.ConsensusMessage(
             sender_id=message_dict["sender_id"],
             receiver_id=message_dict["receiver_id"],
@@ -63,5 +70,21 @@ class GrpcClientManager:
             return stub.SendMessage(request, timeout=2)
         except grpc.RpcError as e:
             print(f"[ERROR] gRPC to {host}:{port} failed: {e.code()} - {e.details()}")
+            self.stub_cache.pop((host, port), None)
+            return None
+
+    def get_resources(self, agent_name):
+        host = "localhost"
+        port = 60000
+
+        stub = self.get_stub(host, port, ServiceType.COLMENA)
+
+        request = policy_pb2.ResourceRequest(agentName=agent_name)
+
+        try:
+            response = stub.GetResources(request, timeout=2)
+            return {res.name: res.value for res in response.resources}
+        except grpc.RpcError as e:
+            print(f"[ERROR] gRPC GetResources to {host}:{port} failed: {e.code()} - {e.details()}")
             self.stub_cache.pop((host, port), None)
             return None

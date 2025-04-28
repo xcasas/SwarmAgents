@@ -181,7 +181,7 @@ class SwarmAgent(Agent):
         self.logger.info(f"Agent: {self} stopped with restarts: {self.restart_job_selection_cnt}!")
 
     def start_consensus(self):
-        print("Agent start consensus!")
+        pass
 
     def __compute_cost_matrix(self, jobs: List[Job], caps_jobs_selected: Capacities) -> np.ndarray:
         """

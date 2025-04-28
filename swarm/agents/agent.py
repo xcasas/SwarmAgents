@@ -151,7 +151,9 @@ class Agent(Observer):
 
     @property
     def capacities(self):
-        return self.get_system_info()
+        agent_name = "Agent" + str(self.agent_id)
+        resources = self.ctrl_msg_srv.client.get_resources(agent_name)
+        return self.get_system_info(resources)
 
     @property
     def profile(self):
@@ -500,20 +502,28 @@ class Agent(Observer):
                 self.logger.error(traceback.format_exc())
 
     @staticmethod
-    def get_system_info(): # Get resources somewhere else
+    def get_system_info(resources):
+        if 'cpu' in resources:
+            cpu_count = 100 - resources['cpu']
+
+        if 'ram' in resources:
+            available_ram = 100 - resources['ram']
+
+        if 'memory' in resources:
+            free_disk = 100 - resources['memory']
+
         # Get CPU information
-        cpu_count = psutil.cpu_count()
+        #cpu_count = psutil.cpu_count()
 
         # Get RAM information
-        total_ram = round(psutil.virtual_memory().total / (1024.0 ** 3), 2)  # Total RAM in GB
-        available_ram = round(psutil.virtual_memory().available / (1024.0 ** 3), 2)  # Available RAM in GB
+        #total_ram = round(psutil.virtual_memory().total / (1024.0 ** 3), 2)  # Total RAM in GB
+        #available_ram = round(psutil.virtual_memory().available / (1024.0 ** 3), 2)  # Available RAM in GB
 
         # Get disk information
-        disk_usage = psutil.disk_usage('/')
-        total_disk = round(disk_usage.total / (1024.0 ** 3), 2)  # Total disk space in GB
-        used_disk = round(disk_usage.used / (1024.0 ** 3), 2)  # Used disk space in GB
-        free_disk = round(disk_usage.free / (1024.0 ** 3), 2)  # Free disk space in GB
-
+        #disk_usage = psutil.disk_usage('/')
+        #total_disk = round(disk_usage.total / (1024.0 ** 3), 2)  # Total disk space in GB
+        #used_disk = round(disk_usage.used / (1024.0 ** 3), 2)  # Used disk space in GB
+        #free_disk = round(disk_usage.free / (1024.0 ** 3), 2)  # Free disk space in GB
         return Capacities(core=float(cpu_count), ram=float(available_ram), disk=float(free_disk))
 
     @staticmethod

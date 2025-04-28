@@ -2,6 +2,10 @@ syntax = "proto3";
 
 package policy;
 
+service ColmenaService {
+  rpc GetResources(ResourceRequest) returns (ResourceResponse);
+}
+
 service PolicyService {
   rpc Initialize(InitializeOrStopRequest) returns (InitializeOrStopResponse);
   rpc Decide (DecideRequest) returns (DecideResponse);
@@ -18,7 +22,7 @@ message InitializeOrStopResponse {
 }
 
 message DecideRequest {
-  repeated string roleNames = 1;
+  repeated Role roles = 1;
   repeated IndicatorLevel levels = 2;
   repeated Resource resources = 3;
 }
@@ -27,12 +31,25 @@ message DecideResponse {
   map<string, bool> decisions = 1;
 }
 
+message ResourceRequest {
+  string agentName = 1;
+}
+
+message ResourceResponse {
+  repeated Resource resources = 1;
+}
+
 message IndicatorLevel {
   string name = 1;
   float value = 2;
   bool isMet = 3;
   float threshold = 4;
   string associatedRole = 5;
+}
+
+message Role {
+  string roleName = 1;
+  repeated Resource resources = 2;
 }
 
 message Resource {

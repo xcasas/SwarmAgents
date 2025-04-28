@@ -63,29 +63,25 @@ class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
         return policy_pb2.InitializeOrStopResponse(success=True, message=f"Policy '{request.policy_name}' stopped.")
 
     def Decide(self, request, context):
-        resources = []
-        levels = []
+        resources = [Resource(res.name, res.value) for res in request.resources] if request.resources else []
 
-        if not request.resources == []:
-            resources = [Resource(res.name, res.value) for res in request.resources]
+        levels = [
+            IndicatorLevel(ind.name, ind.value, ind.isMet, ind.threshold, ind.associatedRole)
+            for ind in request.levels
+        ] if request.levels else []
 
-        if not request.levels == []:
-            levels = [
-                IndicatorLevel(
-                    ind.name, ind.value, ind.isMet, ind.threshold, ind.associatedRole
-                )
-                for ind in request.levels
-            ]
+        roles = {
+            role.roleName: [Resource(res.name, res.value) for res in role.resources]
+            for role in request.roles
+        }
 
-        start_consensus = False
-        for level in levels:
-            if (level.is_met):
-                start_consensus = True
-
-        if start_consensus:
+        if any(level.is_met for level in levels):
             self.observer.start_consensus()
-        decisions = None #self.run(role_names, levels, resources)
+
+        decisions = {role_name: True for role_name in roles}
+
         return policy_pb2.DecideResponse(decisions=decisions)
+
 
 
 class Resource:
