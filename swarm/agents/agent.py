@@ -153,7 +153,10 @@ class Agent(Observer):
     def capacities(self):
         agent_name = "Agent" + str(self.agent_id)
         resources = self.ctrl_msg_srv.client.get_resources(agent_name)
-        return self.get_system_info(resources)
+        if resources is not None:
+            return self.get_system_info(resources)
+        else:
+            return None
 
     @property
     def profile(self):
@@ -270,7 +273,7 @@ class Agent(Observer):
             return MessageServiceKafka(config=self.messaging.kafka_config, logger=self.logger)
 
     def _create_heartbeat_message_service(self) -> tuple[Union[MessageServiceNats, MessageServiceKafka, None],
-                                                         Union[threading.Thread, None]]:
+    Union[threading.Thread, None]]:
         if self.message_service_type == "nats":
             return (
                 MessageServiceNats(config=self.messaging.nat_config_hb, logger=self.logger),
@@ -370,11 +373,13 @@ class Agent(Observer):
         my_load = self.compute_overall_load()
         agent = AgentInfo(agent_id=self.agent_id,
                           capacities=self.capacities,
-                          capacity_allocations=self.queues.ready_queue.capacities(jobs=self.queues.ready_queue.get_jobs()),
+                          capacity_allocations=self.queues.ready_queue.capacities(
+                              jobs=self.queues.ready_queue.get_jobs()),
                           load=my_load,
                           last_updated=time.time())
         self._save_load_metric(self.agent_id, my_load)
-        if not only_self and isinstance(self.messaging.topology_peer_agent_list, list) and len(self.neighbor_map.values()):
+        if not only_self and isinstance(self.messaging.topology_peer_agent_list, list) and len(
+                self.neighbor_map.values()):
             for peer_agent_id, peer in self.neighbor_map.items():
                 agents[peer_agent_id] = peer
         agents[self.agent_id] = agent
@@ -503,27 +508,22 @@ class Agent(Observer):
 
     @staticmethod
     def get_system_info(resources):
-        if 'cpu' in resources:
-            cpu_count = 100 - resources['cpu']
-
-        if 'ram' in resources:
-            available_ram = 100 - resources['ram']
-
-        if 'memory' in resources:
-            free_disk = 100 - resources['memory']
+        cpu_count = 100 - resources['core']
+        available_ram = 100 - resources['ram']
+        free_disk = 100 - resources['disk']
 
         # Get CPU information
-        #cpu_count = psutil.cpu_count()
+        # cpu_count = psutil.cpu_count()
 
         # Get RAM information
-        #total_ram = round(psutil.virtual_memory().total / (1024.0 ** 3), 2)  # Total RAM in GB
-        #available_ram = round(psutil.virtual_memory().available / (1024.0 ** 3), 2)  # Available RAM in GB
+        # total_ram = round(psutil.virtual_memory().total / (1024.0 ** 3), 2)  # Total RAM in GB
+        # available_ram = round(psutil.virtual_memory().available / (1024.0 ** 3), 2)  # Available RAM in GB
 
         # Get disk information
-        #disk_usage = psutil.disk_usage('/')
-        #total_disk = round(disk_usage.total / (1024.0 ** 3), 2)  # Total disk space in GB
-        #used_disk = round(disk_usage.used / (1024.0 ** 3), 2)  # Used disk space in GB
-        #free_disk = round(disk_usage.free / (1024.0 ** 3), 2)  # Free disk space in GB
+        # disk_usage = psutil.disk_usage('/')
+        # total_disk = round(disk_usage.total / (1024.0 ** 3), 2)  # Total disk space in GB
+        # used_disk = round(disk_usage.used / (1024.0 ** 3), 2)  # Used disk space in GB
+        # free_disk = round(disk_usage.free / (1024.0 ** 3), 2)  # Free disk space in GB
         return Capacities(core=float(cpu_count), ram=float(available_ram), disk=float(free_disk))
 
     @staticmethod
@@ -650,14 +650,13 @@ class Agent(Observer):
         return round(overall_load, 2)
 
     def select_job(self, job: Job):
-        #print(f"Adding: {job.get_job_id()} on agent: {self.agent_id} to Select Queue")
+        # print(f"Adding: {job.get_job_id()} on agent: {self.agent_id} to Select Queue")
         self.logger.info(f"[SELECTED]: {job.get_job_id()} on agent: {self.agent_id} to Select Queue")
         # Add the job to the list of allocated jobs
         self.queues.selected_queue.add_job(job=job)
 
     def schedule_job(self, job: Job):
         self.end_idle()
-        print(f"SCHEDULED: {job.get_job_id()} on agent: {self.agent_id}")
         self.logger.info(f"[SCHEDULED]: {job.get_job_id()} on agent: {self.agent_id}")
         # Add the job to the list of allocated jobs
         self.queues.ready_queue.add_job(job=job)
@@ -671,6 +670,7 @@ class Agent(Observer):
         # Once the job is completed, move it to the completed_jobs list and remove it from the allocated_jobs list
         # Assuming execute_job function performs the actual execution of the job
         try:
+            print(f"{self.agent_id} executes job {job.get_job_id()}")
             job.execute(data_transfer=self.data_transfer)
             self.queues.done_queue.add_job(job=job)
             self.queues.ready_queue.remove_job(job_id=job.get_job_id())
@@ -787,7 +787,7 @@ class Agent(Observer):
                     ready_queue_load = self.compute_ready_queue_load()
                     if ready_queue_load < self.ready_queue_threshold and self.can_schedule_job(job):
                         self.queues.selected_queue.remove_job(job.get_job_id())
-                        self.schedule_job(job) # Here one could add the output call (decisions)
+                        self.schedule_job(job)  # Here one could add the output call (decisions)
                     else:
                         time.sleep(0.5)
 
@@ -919,7 +919,8 @@ class Agent(Observer):
             plt.legend(loc='upper left', bbox_to_anchor=(1, 1))  # This places the legend outside the plot area
 
             # Save the plot
-            plt.savefig(f'{self.results_dir}/job_latency_{self.agent_id}.png', bbox_inches='tight')  # bbox_inches='tight' ensures that the entire plot is saved
+            plt.savefig(f'{self.results_dir}/job_latency_{self.agent_id}.png',
+                        bbox_inches='tight')  # bbox_inches='tight' ensures that the entire plot is saved
             plt.close()
 
     def plot_load_per_agent(self, load_dict: dict, threshold: float, title_prefix: str = ""):

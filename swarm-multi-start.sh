@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-
+#pkill -f "main.py swarm-multi"
 # Required argument
 num_agents=$1
 shift

@@ -76,7 +76,7 @@ class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
         }
 
         if any(level.is_met for level in levels):
-            self.observer.start_consensus()
+            self.observer.start_consensus(roles)
 
         decisions = {role_name: True for role_name in roles}
 
