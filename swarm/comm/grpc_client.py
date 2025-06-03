@@ -85,6 +85,6 @@ class GrpcClientManager:
             response = stub.GetResources(request, timeout=2)
             return {res.name: res.value for res in response.resources}
         except grpc.RpcError as e:
-            print(f"[ERROR] gRPC GetResources to {host}:{port} failed: {e.code()} - {e.details()}")
+            #print(f"[ERROR] gRPC GetResources to {host}:{port} failed: {e.code()} - {e.details()}")
             self.stub_cache.pop((host, port), None)
             return None

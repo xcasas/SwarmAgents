@@ -27,6 +27,7 @@ import logging
 import grpc
 from concurrent import futures
 import json
+import asyncio
 
 from swarm.comm import consensus_pb2_grpc, consensus_pb2
 from swarm.comm import policy_pb2_grpc, policy_pb2
@@ -62,9 +63,11 @@ class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
         print(f"Stopping policy: {request.policy_name}")
         return policy_pb2.InitializeOrStopResponse(success=True, message=f"Policy '{request.policy_name}' stopped.")
 
-    def Decide(self, request, context):
-        resources = [Resource(res.name, res.value) for res in request.resources] if request.resources else []
+    class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
+        def __init__(self, observer: Observer):
+            self.observer = observer
 
+    def Decide(self, request, context):
         levels = [
             IndicatorLevel(ind.name, ind.value, ind.isMet, ind.threshold, ind.associatedRole)
             for ind in request.levels
@@ -75,13 +78,34 @@ class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
             for role in request.roles
         }
 
-        if any(level.is_met for level in levels):
+        decisions = {}
+        if any(not level.is_met for level in levels):
             self.observer.start_consensus(roles)
 
-        decisions = {role_name: True for role_name in roles}
+            result = asyncio.run(wait_for_decisions(self.observer))
+
+            if result is None:
+                self.observer.remove_jobs(roles)
+                return policy_pb2.DecideResponse(decisions={})
+
+            decisions = result
+
+            for role in request.roles:
+                if role.isRunning:
+                    decisions[role.roleName] = True
 
         return policy_pb2.DecideResponse(decisions=decisions)
 
+
+async def wait_for_decisions(observer, timeout=10, interval=0.5):
+    total_wait = 0
+    while total_wait < timeout:
+        decisions = observer.get_decisions()
+        if len(decisions) > 0:
+            return decisions
+        await asyncio.sleep(interval)
+        total_wait += interval
+    return None
 
 
 class Resource:

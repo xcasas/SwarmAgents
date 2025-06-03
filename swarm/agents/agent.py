@@ -153,10 +153,9 @@ class Agent(Observer):
     def capacities(self):
         agent_name = "Agent" + str(self.agent_id)
         resources = self.ctrl_msg_srv.client.get_resources(agent_name)
-        if resources is not None:
-            return self.get_system_info(resources)
-        else:
-            return None
+        capacities = self.get_system_info(resources) if resources else Capacities(core=float(0.001), ram=float(0.001),
+                                                                            disk=float(0.001))
+        return capacities
 
     @property
     def profile(self):
@@ -204,7 +203,7 @@ class Agent(Observer):
 
     @property
     def jobs_per_proposal(self):
-        return self.runtime_config.get("jobs_per_proposal", 3)
+        return self.runtime_config.get("jobs_per_proposal", 1)
 
     def _build_messaging_config(self, config: dict) -> MessagingConfig:
         topic_suffix = ""
@@ -388,8 +387,8 @@ class Agent(Observer):
 
     def _heartbeat_main(self):
         while not self.shutdown:
-            agents = {}
             try:
+                agents = {}
                 agents = self._build_heart_beat()
                 if self.heartbeat_mode != "kafka":
                     agent_info = agents[self.agent_id]
@@ -416,7 +415,10 @@ class Agent(Observer):
                                                              topic=f"{self.hb_topic}-{peer_agent_id}",
                                                              dest=peer_agent_id,
                                                              src=self.agent_id)
-                time.sleep(5)
+                    time.sleep(5)
+            # except AttributeError:
+            #    print("Resources not available yet.")
+
             except Exception as e:
                 self.logger.error(f"Error occurred while sending heartbeat e: {e}")
                 self.logger.error(traceback.format_exc())
@@ -622,7 +624,8 @@ class Agent(Observer):
         for j in proposed_jobs:
             if j not in self.queues.ready_queue and j not in self.queues.selected_queue:
                 job = self.queues.job_queue.get_job(job_id=j)
-                allocated_caps += job.capacities
+                if job:
+                    allocated_caps += job.capacities
 
         core_load = (allocated_caps.core / self.capacities.core) * 100
         ram_load = (allocated_caps.ram / self.capacities.ram) * 100
@@ -670,7 +673,6 @@ class Agent(Observer):
         # Once the job is completed, move it to the completed_jobs list and remove it from the allocated_jobs list
         # Assuming execute_job function performs the actual execution of the job
         try:
-            print(f"{self.agent_id} executes job {job.get_job_id()}")
             job.execute(data_transfer=self.data_transfer)
             self.queues.done_queue.add_job(job=job)
             self.queues.ready_queue.remove_job(job_id=job.get_job_id())

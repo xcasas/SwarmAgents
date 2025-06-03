@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cpolicy.proto\x12\x06policy\".\n\x17InitializeOrStopRequest\x12\x13\n\x0bpolicy_name\x18\x01 \x01(\t\"<\n\x18InitializeOrStopResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"y\n\rDecideRequest\x12\x1b\n\x05roles\x18\x01 \x03(\x0b\x32\x0c.policy.Role\x12&\n\x06levels\x18\x02 \x03(\x0b\x32\x16.policy.IndicatorLevel\x12#\n\tresources\x18\x03 \x03(\x0b\x32\x10.policy.Resource\"|\n\x0e\x44\x65\x63ideResponse\x12\x38\n\tdecisions\x18\x01 \x03(\x0b\x32%.policy.DecideResponse.DecisionsEntry\x1a\x30\n\x0e\x44\x65\x63isionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\"$\n\x0fResourceRequest\x12\x11\n\tagentName\x18\x01 \x01(\t\"7\n\x10ResourceResponse\x12#\n\tresources\x18\x01 \x03(\x0b\x32\x10.policy.Resource\"g\n\x0eIndicatorLevel\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x02\x12\r\n\x05isMet\x18\x03 \x01(\x08\x12\x11\n\tthreshold\x18\x04 \x01(\x02\x12\x16\n\x0e\x61ssociatedRole\x18\x05 \x01(\t\"=\n\x04Role\x12\x10\n\x08roleName\x18\x01 \x01(\t\x12#\n\tresources\x18\x02 \x03(\x0b\x32\x10.policy.Resource\"\'\n\x08Resource\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x02\x32S\n\x0e\x43olmenaService\x12\x41\n\x0cGetResources\x12\x17.policy.ResourceRequest\x1a\x18.policy.ResourceResponse2\xe4\x01\n\rPolicyService\x12O\n\nInitialize\x12\x1f.policy.InitializeOrStopRequest\x1a .policy.InitializeOrStopResponse\x12\x37\n\x06\x44\x65\x63ide\x12\x15.policy.DecideRequest\x1a\x16.policy.DecideResponse\x12I\n\x04Stop\x12\x1f.policy.InitializeOrStopRequest\x1a .policy.InitializeOrStopResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cpolicy.proto\x12\x06policy\".\n\x17InitializeOrStopRequest\x12\x13\n\x0bpolicy_name\x18\x01 \x01(\t\"<\n\x18InitializeOrStopResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0f\n\x07message\x18\x02 \x01(\t\"y\n\rDecideRequest\x12\x1b\n\x05roles\x18\x01 \x03(\x0b\x32\x0c.policy.Role\x12&\n\x06levels\x18\x02 \x03(\x0b\x32\x16.policy.IndicatorLevel\x12#\n\tresources\x18\x03 \x03(\x0b\x32\x10.policy.Resource\"|\n\x0e\x44\x65\x63ideResponse\x12\x38\n\tdecisions\x18\x01 \x03(\x0b\x32%.policy.DecideResponse.DecisionsEntry\x1a\x30\n\x0e\x44\x65\x63isionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\"$\n\x0fResourceRequest\x12\x11\n\tagentName\x18\x01 \x01(\t\"7\n\x10ResourceResponse\x12#\n\tresources\x18\x01 \x03(\x0b\x32\x10.policy.Resource\"g\n\x0eIndicatorLevel\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x02\x12\r\n\x05isMet\x18\x03 \x01(\x08\x12\x11\n\tthreshold\x18\x04 \x01(\x02\x12\x16\n\x0e\x61ssociatedRole\x18\x05 \x01(\t\"P\n\x04Role\x12\x10\n\x08roleName\x18\x01 \x01(\t\x12\x11\n\tisRunning\x18\x02 \x01(\x08\x12#\n\tresources\x18\x03 \x03(\x0b\x32\x10.policy.Resource\"\'\n\x08Resource\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x02\x32S\n\x0e\x43olmenaService\x12\x41\n\x0cGetResources\x12\x17.policy.ResourceRequest\x1a\x18.policy.ResourceResponse2\xe4\x01\n\rPolicyService\x12O\n\nInitialize\x12\x1f.policy.InitializeOrStopRequest\x1a .policy.InitializeOrStopResponse\x12\x37\n\x06\x44\x65\x63ide\x12\x15.policy.DecideRequest\x1a\x16.policy.DecideResponse\x12I\n\x04Stop\x12\x1f.policy.InitializeOrStopRequest\x1a .policy.InitializeOrStopResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -50,11 +50,11 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_INDICATORLEVEL']._serialized_start=478
   _globals['_INDICATORLEVEL']._serialized_end=581
   _globals['_ROLE']._serialized_start=583
-  _globals['_ROLE']._serialized_end=644
-  _globals['_RESOURCE']._serialized_start=646
-  _globals['_RESOURCE']._serialized_end=685
-  _globals['_COLMENASERVICE']._serialized_start=687
-  _globals['_COLMENASERVICE']._serialized_end=770
-  _globals['_POLICYSERVICE']._serialized_start=773
-  _globals['_POLICYSERVICE']._serialized_end=1001
+  _globals['_ROLE']._serialized_end=663
+  _globals['_RESOURCE']._serialized_start=665
+  _globals['_RESOURCE']._serialized_end=704
+  _globals['_COLMENASERVICE']._serialized_start=706
+  _globals['_COLMENASERVICE']._serialized_end=789
+  _globals['_POLICYSERVICE']._serialized_start=792
+  _globals['_POLICYSERVICE']._serialized_end=1020
 # @@protoc_insertion_point(module_scope)

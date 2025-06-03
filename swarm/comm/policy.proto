@@ -49,7 +49,8 @@ message IndicatorLevel {
 
 message Role {
   string roleName = 1;
-  repeated Resource resources = 2;
+  bool isRunning = 2;
+  repeated Resource resources = 3;
 }
 
 message Resource {
