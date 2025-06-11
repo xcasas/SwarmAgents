@@ -96,6 +96,44 @@ class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
 
         return policy_pb2.DecideResponse(decisions=decisions)
 
+    def RequestRoles(self, request, context):
+        roleName = request.role.roleName
+        startOrStop = request.startOrStop
+        if startOrStop:
+            jobName = f"start{roleName}"
+        else:
+            jobName = f"stop{roleName}"
+        resources = request.role.resources
+
+
+        self.observer.start_consensus({jobName: resources}, startOrStop)
+
+        result = asyncio.run(wait_for_decisions(self.observer))
+
+        if result is None or jobName not in result:
+            self.observer.remove_jobs(jobName)
+            return policy_pb2.RoleResponse(reachedConsensus=False, toExecute=request.role.isRunning)
+
+        else:
+            r = request.role.isRunning
+            s = startOrStop
+            res = result[jobName]
+            decision = (r and s) or (not r and s and res) or (r and not s and not res)
+
+            # Determine whether a role should be running in the next state, based on:
+            # - its current running status (`isRunning`)
+            # - whether we're in "start" mode (`startOrStop == True`) or "stop" mode (`startOrStop == False`)
+            # - whether this specific role is selected in the `result` map
+            #
+            # Rules:
+            # - If a role is already running and we're starting, keep it running.
+            # - If a role is not running but selected to start, start it.
+            # - If a role is not running and not selected, keep it stopped.
+            # - If a role is running and we're stopping, only stop it if it's selected to stop.
+            # - If a role is running and not selected to stop, keep it running.
+
+            return policy_pb2.RoleResponse(reachedConsensus=True, toExecute=decision)
+
 
 async def wait_for_decisions(observer, timeout=10, interval=0.5):
     total_wait = 0

@@ -63,11 +63,11 @@ job = {
         "remote_user": "rocky",
         "remote_file": "/tmp/input1.txt"
     },
-    {
+        {
             "remote_ip": "1.2.3.4",
             "remote_user": "rocky",
             "remote_file": "/tmp/input1.txt"
-    }],
+        }],
     "data_out": [{
         "remote_ip": "1.2.3.4",
         "remote_user": "rocky",
@@ -87,6 +87,7 @@ class Job:
 
     def __init__(self, logger: logging.Logger = None):
         self.job_id = None
+        self.min_or_max = True
         self.capacities = None
         self.capacity_allocations = None
         self.no_op = 0
@@ -106,6 +107,12 @@ class Job:
         self.completed_at = None
         self.leader_agent_id = None
         self.time_last_state_change = 0
+
+    def get_min_or_max(self) -> bool:
+        return self.min_or_max
+
+    def set_min_or_max(self, min_or_max: bool):
+        self.min_or_max = min_or_max
 
     def get_age(self) -> float:
         """
@@ -400,7 +407,8 @@ class Job:
     def from_dict(self, job_data: dict):
         self.job_id = job_data['id']
         self.capacities = Capacities.from_dict(job_data['capacities']) if job_data.get('capacities') else None
-        self.capacity_allocations = Capacities.from_dict(job_data['capacity_allocations']) if job_data.get('capacity_allocations') else None
+        self.capacity_allocations = Capacities.from_dict(job_data['capacity_allocations']) if job_data.get(
+            'capacity_allocations') else None
         self.no_op = job_data['no_op']
         self.data_in = [DataNode.from_dict(data_in) for data_in in job_data['data_in']]
         self.data_out = [DataNode.from_dict(data_out) for data_out in job_data['data_out']]
@@ -410,12 +418,15 @@ class Job:
         self.prepares = job_data['prepares'] if job_data.get('prepares') else 0
         self.commits = job_data['commits'] if job_data.get('commits') else 0
         self.created_at = job_data['created_at'] if job_data.get('created_at') is not None else time.time()
-        self.selection_started_at = job_data['selection_started_at'] if job_data.get('selection_started_at') is not None else time.time()
-        self.selected_by_agent_at = job_data['selected_by_agent_at'] if job_data.get('selected_by_agent_at') is not None else None
+        self.selection_started_at = job_data['selection_started_at'] if job_data.get(
+            'selection_started_at') is not None else time.time()
+        self.selected_by_agent_at = job_data['selected_by_agent_at'] if job_data.get(
+            'selected_by_agent_at') is not None else None
         self.scheduled_at = job_data['scheduled_at'] if job_data.get('scheduled_at') is not None else None
         self.completed_at = job_data['completed_at'] if job_data.get('completed_at') is not None else None
         self.leader_agent_id = job_data['leader_agent_id'] if job_data.get('leader_agent_id') is not None else None
-        self.time_last_state_change = job_data['time_last_state_change'] if job_data.get('time_last_state_change') is not None else None
+        self.time_last_state_change = job_data['time_last_state_change'] if job_data.get(
+            'time_last_state_change') is not None else None
 
 
 class JobRepository:

@@ -139,7 +139,7 @@ class SwarmAgent(Agent):
                     election_timeout = random.uniform(600, 800) / 1000
                     time.sleep(election_timeout)
 
-                    if self.__can_select_job(job=job, caps_jobs_selected=caps_jobs_selected):
+                    if self.__can_select_job(job=job, caps_jobs_selected=caps_jobs_selected, minOrMax=job.get_min_or_max()):
                         # Send proposal to all neighbors
                         if job is None:
                             print("Job is none!!")
@@ -184,17 +184,18 @@ class SwarmAgent(Agent):
                 self.logger.error(traceback.format_exc())
         self.logger.info(f"Agent: {self} stopped with restarts: {self.restart_job_selection_cnt}!")
 
-    def start_consensus(self, roles):
+    def start_consensus(self, roles, startOrStop):
         for role in roles:
             task = Job()
             task.set_job_id(role)
+            task.set_min_or_max(startOrStop)
             resources = {res.name: res.value for res in roles[role]}
             task.set_capacities(Capacities.from_dict(resources))
             if role in self.queues.job_queue:
                 self.remove_job(role)
             self.queues.job_queue.add_job(task)
-            print('Agent: ' + str(self.agent_id) + " started consensus for role: " + role)
-            self.logger.info(f"Agent: {str(self.agent_id)} started consensus for role: {role}")
+            print(f"Agent: {str(self.agent_id)} started consensus for role: {role}, startOrStop: {startOrStop}")
+            self.logger.info(f"Agent: {str(self.agent_id)} started consensus for role: {role}, startOrStop: {startOrStop}")
 
     def remove_job(self, job_id):
         self.incoming_proposals.remove_job(job_id=job_id)
@@ -245,7 +246,7 @@ class SwarmAgent(Agent):
 
         return cost_matrix
 
-    def __find_min_cost_agents(self, cost_matrix: np.ndarray) -> list:
+    def __find_min_cost_agents(self, cost_matrix: np.ndarray, minOrMax: bool) -> list:
         """
         Find the agents with the minimum cost for each job, ensuring:
         1. The agent itself is chosen if it has the minimum cost.
@@ -262,8 +263,18 @@ class SwarmAgent(Agent):
             finite_costs = valid_costs[valid_costs != float('inf')]  # Filter out infinite costs
 
             if len(finite_costs) > 0:  # If there are any finite costs
-                min_index = np.argmin(finite_costs)  # Find the index of the minimum cost
-                original_index = np.where(valid_costs == finite_costs[min_index])[0][0]  # Get the original index
+                if minOrMax:
+                    index = np.argmin(finite_costs)  # Find the index of the minimum cost
+                    self.logger.info(f"Min is {agent_ids[np.where(valid_costs == finite_costs[index])[0][0]]}")
+                    index_ = np.argmax(finite_costs)
+                    self.logger.info(f"Max is {agent_ids[np.where(valid_costs == finite_costs[index_])[0][0]]}")
+                else:
+                    index = np.argmax(finite_costs)
+                    self.logger.info(f"Max is {agent_ids[np.where(valid_costs == finite_costs[index])[0][0]]}")
+                    index_ = np.argmin(finite_costs)
+                    self.logger.info(f"Min is {agent_ids[np.where(valid_costs == finite_costs[index_])[0][0]]}")
+
+                original_index = np.where(valid_costs == finite_costs[index])[0][0]  # Get the original index
                 min_cost_agents.append(agent_ids[original_index])
             '''
             if len(finite_costs) > 0:  # If there are any finite costs
@@ -283,7 +294,7 @@ class SwarmAgent(Agent):
 
         return min_cost_agents
 
-    def __can_select_job(self, job: Job, caps_jobs_selected: Capacities) -> bool:
+    def __can_select_job(self, job: Job, caps_jobs_selected: Capacities, minOrMax: bool) -> bool:
         """
         Check if agent has enough resources to become a leader
             - Agent has resources to executed the job
@@ -294,7 +305,7 @@ class SwarmAgent(Agent):
         :return: True or False
         """
         cost_matrix = self.__compute_cost_matrix([job], caps_jobs_selected)
-        min_cost_agents = self.__find_min_cost_agents(cost_matrix)
+        min_cost_agents = self.__find_min_cost_agents(cost_matrix, minOrMax)
         if len(min_cost_agents) and min_cost_agents[0] == self.agent_id:
             return True
         self.logger.debug(f"[SEL]: Not picked Job: {job.get_job_id()} - TIME: {job.no_op} "
@@ -523,6 +534,7 @@ class SwarmAgent(Agent):
 
     def execute_job(self, job: Job):
         self.logger.info(f"{self.agent_id}: execute job")
+        print(f"Agent{self.agent_id}: execute job")
         self.decisions[job.get_job_id()] = True
         self._consensus = False
         self.update_completed_jobs(jobs=[job.get_job_id()])

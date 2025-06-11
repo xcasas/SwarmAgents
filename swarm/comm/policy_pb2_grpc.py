@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from swarm.comm import policy_pb2 as policy__pb2
+import swarm.comm.policy_pb2 as policy__pb2
 
 GRPC_GENERATED_VERSION = '1.70.0'
 GRPC_VERSION = grpc.__version__
@@ -116,6 +116,11 @@ class PolicyServiceStub(object):
                 request_serializer=policy__pb2.DecideRequest.SerializeToString,
                 response_deserializer=policy__pb2.DecideResponse.FromString,
                 _registered_method=True)
+        self.RequestRoles = channel.unary_unary(
+                '/policy.PolicyService/RequestRoles',
+                request_serializer=policy__pb2.RoleRequest.SerializeToString,
+                response_deserializer=policy__pb2.RoleResponse.FromString,
+                _registered_method=True)
         self.Stop = channel.unary_unary(
                 '/policy.PolicyService/Stop',
                 request_serializer=policy__pb2.InitializeOrStopRequest.SerializeToString,
@@ -133,6 +138,12 @@ class PolicyServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Decide(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RequestRoles(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -156,6 +167,11 @@ def add_PolicyServiceServicer_to_server(servicer, server):
                     servicer.Decide,
                     request_deserializer=policy__pb2.DecideRequest.FromString,
                     response_serializer=policy__pb2.DecideResponse.SerializeToString,
+            ),
+            'RequestRoles': grpc.unary_unary_rpc_method_handler(
+                    servicer.RequestRoles,
+                    request_deserializer=policy__pb2.RoleRequest.FromString,
+                    response_serializer=policy__pb2.RoleResponse.SerializeToString,
             ),
             'Stop': grpc.unary_unary_rpc_method_handler(
                     servicer.Stop,
@@ -217,6 +233,33 @@ class PolicyService(object):
             '/policy.PolicyService/Decide',
             policy__pb2.DecideRequest.SerializeToString,
             policy__pb2.DecideResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RequestRoles(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/policy.PolicyService/RequestRoles',
+            policy__pb2.RoleRequest.SerializeToString,
+            policy__pb2.RoleResponse.FromString,
             options,
             channel_credentials,
             insecure,

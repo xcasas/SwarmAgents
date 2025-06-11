@@ -9,6 +9,7 @@ service ColmenaService {
 service PolicyService {
   rpc Initialize(InitializeOrStopRequest) returns (InitializeOrStopResponse);
   rpc Decide (DecideRequest) returns (DecideResponse);
+  rpc RequestRoles (RoleRequest) returns (RoleResponse);
   rpc Stop(InitializeOrStopRequest) returns (InitializeOrStopResponse);
 }
 
@@ -29,6 +30,16 @@ message DecideRequest {
 
 message DecideResponse {
   map<string, bool> decisions = 1;
+}
+
+message RoleRequest {
+  Role role = 1;
+  bool startOrStop = 2;
+}
+
+message RoleResponse {
+  bool reachedConsensus = 1;
+  bool toExecute = 2;
 }
 
 message ResourceRequest {

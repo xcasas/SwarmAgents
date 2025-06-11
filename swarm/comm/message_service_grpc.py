@@ -48,9 +48,9 @@ class MessageServiceGrpc(Observer):
         self.logger.info(f"Received consensus message: {message}")
         self.notify_observers(msg=message.get("payload"))
 
-    def start_consensus(self, roles):
+    def start_consensus(self, roles, startOrStop):
         for o in self.observers:
-            o.start_consensus(roles)
+            o.start_consensus(roles, startOrStop)
 
     def get_decisions(self):
         for o in self.observers:
