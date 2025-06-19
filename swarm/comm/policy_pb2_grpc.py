@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import swarm.comm.policy_pb2 as policy__pb2
+from swarm.comm import policy_pb2 as policy__pb2
 
 GRPC_GENERATED_VERSION = '1.70.0'
 GRPC_VERSION = grpc.__version__

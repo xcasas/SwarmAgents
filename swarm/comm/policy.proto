@@ -40,6 +40,7 @@ message RoleRequest {
 message RoleResponse {
   bool reachedConsensus = 1;
   bool toExecute = 2;
+  float usage = 3;
 }
 
 message ResourceRequest {

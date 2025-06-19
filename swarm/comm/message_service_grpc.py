@@ -52,14 +52,24 @@ class MessageServiceGrpc(Observer):
         for o in self.observers:
             o.start_consensus(roles, startOrStop)
 
+    def calculate_usage(self):
+        usage = 0
+        for o in self.observers:
+            usage = usage + o.calculate_usage()
+        return usage / len(self.observers)
+
     def get_decisions(self):
         for o in self.observers:
             return o.decisions
         return None
 
-    def remove_jobs(self, jobs):
+    def pop_decision(self, job_id):
         for o in self.observers:
-            for job in jobs:
+            if job_id in o.decisions:
+                o.decisions.pop(job_id)
+
+    def remove_job(self, job):
+        for o in self.observers:
                 o.remove_job(job)
 
     def start(self):

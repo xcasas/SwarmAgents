@@ -153,8 +153,7 @@ class Agent(Observer):
     def capacities(self):
         agent_name = "Agent" + str(self.agent_id)
         resources = self.ctrl_msg_srv.client.get_resources(agent_name)
-        capacities = self.get_system_info(resources) if resources else Capacities(core=float(0.001), ram=float(0.001),
-                                                                            disk=float(0.001))
+        capacities = self.get_system_info(resources) if resources else None
         return capacities
 
     @property
@@ -508,6 +507,7 @@ class Agent(Observer):
                 self.logger.error(f"Error while processing message {type(message)}, {e}")
                 self.logger.error(traceback.format_exc())
 
+    # Xavi: adapted this to use resources in %.
     @staticmethod
     def get_system_info(resources):
         cpu_count = 100 - resources['core']
@@ -627,9 +627,14 @@ class Agent(Observer):
                 if job:
                     allocated_caps += job.capacities
 
-        core_load = (allocated_caps.core / self.capacities.core) * 100
-        ram_load = (allocated_caps.ram / self.capacities.ram) * 100
-        disk_load = (allocated_caps.disk / self.capacities.disk) * 100
+        try:
+            core_load = (allocated_caps.core / self.capacities.core) * 100
+            ram_load = (allocated_caps.ram / self.capacities.ram) * 100
+            disk_load = (allocated_caps.disk / self.capacities.disk) * 100
+        except AttributeError: # Xavi: sometimes resources are still not available. I didn't find a better way to do this.
+            core_load = 1
+            ram_load = 1
+            disk_load = 1
 
         overall_load = (core_load * self.profile.core_weight +
                         ram_load * self.profile.ram_weight +

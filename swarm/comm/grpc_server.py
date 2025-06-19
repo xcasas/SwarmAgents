@@ -67,6 +67,7 @@ class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
         def __init__(self, observer: Observer):
             self.observer = observer
 
+    # Xavi: this function is used when calling the swarm consensus algorithm directly as a policy.
     def Decide(self, request, context):
         levels = [
             IndicatorLevel(ind.name, ind.value, ind.isMet, ind.threshold, ind.associatedRole)
@@ -96,6 +97,7 @@ class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
 
         return policy_pb2.DecideResponse(decisions=decisions)
 
+    # Xavi: this function is triggered to request the execution or termination of roles. This is called from a policy.
     def RequestRoles(self, request, context):
         roleName = request.role.roleName
         startOrStop = request.startOrStop
@@ -108,17 +110,32 @@ class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
 
         self.observer.start_consensus({jobName: resources}, startOrStop)
 
-        result = asyncio.run(wait_for_decisions(self.observer))
+        # Xavi: TODO improve this and make asynchronous calls instead of waiting.
+        result = asyncio.run(wait_for_decisions(self.observer, jobName))
 
-        if result is None or jobName not in result:
-            self.observer.remove_jobs(jobName)
+        if result is None:
+            #print(f"Didn't reach consensus for role {jobName}.")
+            self.observer.remove_job(jobName)
+            self.observer.pop_decision(jobName)
             return policy_pb2.RoleResponse(reachedConsensus=False, toExecute=request.role.isRunning)
 
         else:
+            #print(f"Reached consensus for role {jobName}.")
+
             r = request.role.isRunning
             s = startOrStop
             res = result[jobName]
-            decision = (r and s) or (not r and s and res) or (r and not s and not res)
+
+            if s :
+                if res:
+                    decision = True
+                else:
+                    decision = r
+            else:
+                if res:
+                    decision = False
+                else:
+                    decision = r
 
             # Determine whether a role should be running in the next state, based on:
             # - its current running status (`isRunning`)
@@ -131,15 +148,17 @@ class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
             # - If a role is not running and not selected, keep it stopped.
             # - If a role is running and we're stopping, only stop it if it's selected to stop.
             # - If a role is running and not selected to stop, keep it running.
+            self.observer.remove_job(jobName)
+            self.observer.pop_decision(jobName)
+            return policy_pb2.RoleResponse(reachedConsensus=True, toExecute=decision,
+                                           usage=self.observer.calculate_usage())
 
-            return policy_pb2.RoleResponse(reachedConsensus=True, toExecute=decision)
 
-
-async def wait_for_decisions(observer, timeout=10, interval=0.5):
+async def wait_for_decisions(observer, jobName, timeout=10, interval=1):
     total_wait = 0
     while total_wait < timeout:
         decisions = observer.get_decisions()
-        if len(decisions) > 0:
+        if len(decisions) > 0 and jobName in decisions:
             return decisions
         await asyncio.sleep(interval)
         total_wait += interval

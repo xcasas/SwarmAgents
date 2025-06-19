@@ -111,6 +111,7 @@ class SwarmAgent(Agent):
                 caps_jobs_selected = Capacities()
 
                 for job in self.queues.job_queue.get_jobs():
+                    # Xavi: Had to remove this because job can be re-added to the queue since they are not unique.
                     # if self.is_job_completed(job_id=job.get_job_id()):
                     #   continue
 
@@ -136,10 +137,12 @@ class SwarmAgent(Agent):
                     processed += 1
 
                     # Trigger leader election for a job after random sleep
-                    election_timeout = random.uniform(600, 800) / 1000
+                    election_timeout = random.uniform(500, 1000) / 1000
                     time.sleep(election_timeout)
 
-                    if self.__can_select_job(job=job, caps_jobs_selected=caps_jobs_selected, minOrMax=job.get_min_or_max()):
+                    # Xavi: Added minOrMax attribute to specify if role should be started or terminated
+                    if self.__can_select_job(job=job, caps_jobs_selected=caps_jobs_selected,
+                                             minOrMax=job.get_min_or_max()):
                         # Send proposal to all neighbors
                         if job is None:
                             print("Job is none!!")
@@ -184,6 +187,7 @@ class SwarmAgent(Agent):
                 self.logger.error(traceback.format_exc())
         self.logger.info(f"Agent: {self} stopped with restarts: {self.restart_job_selection_cnt}!")
 
+    # Xavi: Function triggered when called function from GRPC to start the consensus protocol
     def start_consensus(self, roles, startOrStop):
         for role in roles:
             task = Job()
@@ -191,18 +195,26 @@ class SwarmAgent(Agent):
             task.set_min_or_max(startOrStop)
             resources = {res.name: res.value for res in roles[role]}
             task.set_capacities(Capacities.from_dict(resources))
-            if role in self.queues.job_queue:
-                self.remove_job(role)
             self.queues.job_queue.add_job(task)
             print(f"Agent: {str(self.agent_id)} started consensus for role: {role}, startOrStop: {startOrStop}")
-            self.logger.info(f"Agent: {str(self.agent_id)} started consensus for role: {role}, startOrStop: {startOrStop}")
+            self.logger.info(
+                f"Agent: {str(self.agent_id)} started consensus for role: {role}, startOrStop: {startOrStop}")
 
+    # Xavi: implemented this function so that roles can be re-added to the pool.
     def remove_job(self, job_id):
         self.incoming_proposals.remove_job(job_id=job_id)
         self.outgoing_proposals.remove_job(job_id=job_id)
         self.queues.job_queue.remove_job(job_id)
         self.queues.ready_queue.remove_job(job_id)
-        self.decisions[job_id] = False
+
+    # Xavi: Function to add the global resources spent, so that it can be included in an optimization function
+    def calculate_usage(self):
+        usage = 0
+        for i, peer in enumerate(self.neighbor_map.values(), start=1):
+            caps = peer.capacities
+            average = (caps.cpu + caps.disk + caps.ram) / 3
+            usage = usage + average
+        return usage / (100 * len(self.neighbor_map))
 
     def __compute_cost_matrix(self, jobs: List[Job], caps_jobs_selected: Capacities) -> np.ndarray:
         """
@@ -257,40 +269,34 @@ class SwarmAgent(Agent):
         """
         min_cost_agents = []
         agent_ids = [self.agent_id] + [peer.agent_id for peer in self.neighbor_map.values()]
-
         for j in range(cost_matrix.shape[1]):  # Iterate over each job (column)
             valid_costs = cost_matrix[:, j]  # Get the costs for job j
             finite_costs = valid_costs[valid_costs != float('inf')]  # Filter out infinite costs
 
+            '''if len(finite_costs) > 0:  # If there are any finite costs
+                min_index = np.argmin(finite_costs)  # Find the index of the minimum cost
+                original_index = np.where(valid_costs == finite_costs[min_index])[0][0]  # Get the original index
+                min_cost_agents.append(agent_ids[original_index])'''
+
+            # Xavi: I prefer this one so that the agent chooses itself first
             if len(finite_costs) > 0:  # If there are any finite costs
                 if minOrMax:
-                    index = np.argmin(finite_costs)  # Find the index of the minimum cost
-                    self.logger.info(f"Min is {agent_ids[np.where(valid_costs == finite_costs[index])[0][0]]}")
-                    index_ = np.argmax(finite_costs)
-                    self.logger.info(f"Max is {agent_ids[np.where(valid_costs == finite_costs[index_])[0][0]]}")
+                    selected_cost = np.min(finite_costs)  # Get the minimum cost
                 else:
-                    index = np.argmax(finite_costs)
-                    self.logger.info(f"Max is {agent_ids[np.where(valid_costs == finite_costs[index])[0][0]]}")
-                    index_ = np.argmin(finite_costs)
-                    self.logger.info(f"Min is {agent_ids[np.where(valid_costs == finite_costs[index_])[0][0]]}")
+                    selected_cost = np.max(finite_costs)
 
-                original_index = np.where(valid_costs == finite_costs[index])[0][0]  # Get the original index
-                min_cost_agents.append(agent_ids[original_index])
-            '''
-            if len(finite_costs) > 0:  # If there are any finite costs
-                min_cost = np.min(finite_costs)  # Get the minimum cost
-                min_indices = np.where(valid_costs == min_cost)[0]  # Find all indices with min cost
+                min_indices = np.where(valid_costs == selected_cost)[0]  # Find all indices with min cost
 
                 # Check if self is in min_indices
-                #self_index = 0  # Self agent is always at index 0
-                #if self_index in min_indices:
-                #    selected_index = self_index  # Prioritize selecting itself
-                #else:
-                #    selected_index = random.choice(min_indices)  # Randomly select from others
-                selected_index = random.choice(min_indices)  # Randomly select from others
+                self_index = 0  # Self agent is always at index 0
+                if self_index in min_indices:
+                    selected_index = self_index  # Prioritize selecting itself
+                else:
+                    selected_index = random.choice(min_indices)  # Randomly select from others
+                #selected_index = random.choice(min_indices)  # Randomly select from others
                 #selected_index = min_indices[0]  # Randomly select from others
                 min_cost_agents.append(agent_ids[selected_index])
-            '''
+
 
         return min_cost_agents
 
@@ -306,10 +312,27 @@ class SwarmAgent(Agent):
         """
         cost_matrix = self.__compute_cost_matrix([job], caps_jobs_selected)
         min_cost_agents = self.__find_min_cost_agents(cost_matrix, minOrMax)
+        '''# Xavi: this done only for printing the costs ordered by agent_id, not optimal but temporary.
+        agent_ids_array = np.array([self.agent_id] + [peer.agent_id for peer in self.neighbor_map.values()])
+        costs_for_job = cost_matrix[:, 0]  # assuming single job
+
+        # Get sorted indices of agent_ids
+        sorted_indices = np.argsort(agent_ids_array)
+
+        # Reorder for print
+        sorted_ids = agent_ids_array[sorted_indices]
+        sorted_costs = costs_for_job[sorted_indices]
+
+        print(f"[SEL]- {self.agent_id}: {minOrMax} Cost Agents: {min_cost_agents}, cost (by agent id): {sorted_costs}")'''
+
         if len(min_cost_agents) and min_cost_agents[0] == self.agent_id:
+            #print(f"{self.agent_id} can select job {job.get_job_id()}")
+            self.logger.info(f"[SEL]: Can select job: {job.get_job_id()} - TIME: {job.no_op} "
+                             f"MIN Cost Agents: {cost_matrix[:, 0]}")
+            #print(f"[SEL]: Can select job: {job.get_job_id()} - TIME: {job.no_op} "
+                 # f"MIN Cost Agents: {cost_matrix[:, 0]}")
             return True
-        self.logger.debug(f"[SEL]: Not picked Job: {job.get_job_id()} - TIME: {job.no_op} "
-                          f"MIN Cost Agents: {min_cost_agents}")
+
         return False
 
     def __receive_proposal(self, incoming: Proposal):
@@ -341,7 +364,7 @@ class SwarmAgent(Agent):
                         f" {p.agent_id} and is now the leader")
 
                     p.prepares = []
-                    if my_proposal:
+                    if my_proposal: # Xavi: Is this ever reached?
                         self.logger.debug(f"Removed my Proposal: {my_proposal} in favor of incoming proposal")
                         self.outgoing_proposals.remove_proposal(p_id=my_proposal.p_id, job_id=p.job_id)
                     if peer_proposal:
@@ -372,6 +395,7 @@ class SwarmAgent(Agent):
                         msg = Prepare(source=self.agent_id, agents=[AgentInfo(agent_id=self.agent_id)],
                                       proposals=proposals)
                         self._send_message(json_message=msg.to_dict())
+                        #print(f"{self.agent_id} sends prepare {proposals[0].job_id} for proposal {proposals[0].p_id} from agent {p.agent_id}.")
 
     def __receive_prepare(self, incoming: Prepare):
         proposals = []
@@ -397,7 +421,7 @@ class SwarmAgent(Agent):
                 else:
                     proposal = p
                     self.incoming_proposals.add_proposal(proposal=p)
-
+                # print(f"{self.agent_id}: Best agent is: {incoming.agents[0].agent_id}")
                 if incoming.agents[0].agent_id not in proposal.prepares:
                     proposal.prepares.append(incoming.agents[0].agent_id)
                     # Forward Prepare for peer proposals
@@ -414,6 +438,7 @@ class SwarmAgent(Agent):
                 if len(proposal.prepares) >= quorum_count:
                     self.logger.debug(f"Job: {p.job_id} Agent: {self.agent_id} received quorum "
                                       f"prepares: {proposal.prepares}, starting commit!")
+                    #print(f"Received quorum in prepares for job {p.job_id} from agent {self.agent_id}")
 
                     # Increment the number of commits to count the commit being sent
                     # Needed to handle 3 agent case
@@ -441,6 +466,7 @@ class SwarmAgent(Agent):
 
         for p in incoming.proposals:
             job = self.queues.job_queue.get_job(job_id=p.job_id)
+            #print(f"{self.agent_id} received commit for job {p.job_id} from {incoming.agents[0].agent_id} for job to run in {p.agent_id}.")
 
             if job is not None:
                 # Xavi: Commented this because jobs (roles) can be re-added to the pool.
@@ -466,8 +492,8 @@ class SwarmAgent(Agent):
                         proposals_to_forward.append(proposal)
 
                 quorum_count = (len(self.neighbor_map) // 2) + 1  # Ensure a true majority
-
                 if len(proposal.commits) >= quorum_count:
+                    #print("Received quorum in commits.")
                     self.logger.info(
                         f"Job: {p.job_id} Agent: {self.agent_id} received quorum commits Proposal: {proposal}: "
                         f"Job: {job.get_job_id()}")
@@ -475,16 +501,16 @@ class SwarmAgent(Agent):
                         job.set_leader(leader_agent_id=proposal.agent_id)
                         # if self.outgoing_proposals.contains(job_id=p.job_id, p_id=p.p_id):
                         self.logger.info(f"[CON_LEADER] achieved for Job: {p.job_id} Leader: {proposal.agent_id}")
+                        # Xavi: added decisions of whether the leader was selected. These decisions are sent back to Colmena through GRPC.
+                        self.decisions[job.get_job_id()] = True
                         job.change_state(new_state=JobState.READY)
                         self.select_job(job)
-                        self.outgoing_proposals.remove_job(job_id=p.job_id)  # ASK Komal
+                        # self.outgoing_proposals.remove_job(job_id=p.job_id)
                     else:
+                        self.decisions[job.get_job_id()] = False
                         self.logger.info(f"[CON_PART] achieved for Job: {p.job_id} Leader: {p.agent_id}")
                         # job.change_state(new_state=JobState.COMMIT)
                         # self.incoming_proposals.remove_job(job_id=p.job_id)'''
-
-                    # Xavi: Had to remove jobs from all queues.
-                    self.remove_job(p.job_id)
 
         if len(proposals_to_forward):
             msg = Commit(source=incoming.agents[0].agent_id, agents=[AgentInfo(agent_id=incoming.agents[0].agent_id)],
@@ -535,8 +561,6 @@ class SwarmAgent(Agent):
     def execute_job(self, job: Job):
         self.logger.info(f"{self.agent_id}: execute job")
         print(f"Agent{self.agent_id}: execute job")
-        self.decisions[job.get_job_id()] = True
-        self._consensus = False
         self.update_completed_jobs(jobs=[job.get_job_id()])
         self.job_repo.save(obj=job.to_dict())
         super().execute_job(job=job)
