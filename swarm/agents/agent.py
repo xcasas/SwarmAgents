@@ -153,7 +153,7 @@ class Agent(Observer):
     def capacities(self):
         agent_name = "Agent" + str(self.agent_id)
         resources = self.ctrl_msg_srv.client.get_resources(agent_name)
-        capacities = self.get_system_info(resources) if resources else None
+        capacities = self.get_system_info(resources)
         return capacities
 
     @property
@@ -510,9 +510,16 @@ class Agent(Observer):
     # Xavi: adapted this to use resources in %.
     @staticmethod
     def get_system_info(resources):
-        cpu_count = 100 - resources['core']
-        available_ram = 100 - resources['ram']
-        free_disk = 100 - resources['disk']
+        if resources:
+            cpu_count = 100 - resources['core']
+            available_ram = 100 - resources['ram']
+            free_disk = 100 - resources['disk']
+        else:
+            cpu_count = random.randint(1, 100)
+            available_ram = random.randint(1, 100)
+            free_disk = random.randint(1, 100)
+
+        # TODO: implement getting information in % from agent.
 
         # Get CPU information
         # cpu_count = psutil.cpu_count()

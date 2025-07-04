@@ -25,7 +25,6 @@ message InitializeOrStopResponse {
 message DecideRequest {
   repeated Role roles = 1;
   repeated IndicatorLevel levels = 2;
-  repeated Resource resources = 3;
 }
 
 message DecideResponse {
@@ -39,8 +38,8 @@ message RoleRequest {
 
 message RoleResponse {
   bool reachedConsensus = 1;
-  bool toExecute = 2;
-  float usage = 3;
+  optional bool toExecute = 2;
+  optional float usage = 3;
 }
 
 message ResourceRequest {

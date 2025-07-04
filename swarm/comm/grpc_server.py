@@ -117,7 +117,9 @@ class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
             #print(f"Didn't reach consensus for role {jobName}.")
             self.observer.remove_job(jobName)
             self.observer.pop_decision(jobName)
-            return policy_pb2.RoleResponse(reachedConsensus=False, toExecute=request.role.isRunning)
+            reached_consensus = self.observer.get_reached_consensus()
+            print(f"Result none and reached consensus = {reached_consensus}")
+            return policy_pb2.RoleResponse(reachedConsensus=reached_consensus)
 
         else:
             #print(f"Reached consensus for role {jobName}.")

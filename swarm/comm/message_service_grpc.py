@@ -68,6 +68,10 @@ class MessageServiceGrpc(Observer):
             if job_id in o.decisions:
                 o.decisions.pop(job_id)
 
+    def get_reached_consensus(self):
+        for o in self.observers:
+            return o.reached_consensus
+
     def remove_job(self, job):
         for o in self.observers:
                 o.remove_job(job)

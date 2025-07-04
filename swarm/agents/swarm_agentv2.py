@@ -45,6 +45,7 @@ class SwarmAgent(Agent):
     def __init__(self, agent_id: int, config_file: str):
         super().__init__(agent_id, config_file)
         self.decisions = {}
+        self.reached_consensus = False
         self.outgoing_proposals = ProposalContainer()
         self.incoming_proposals = ProposalContainer()
 
@@ -190,6 +191,7 @@ class SwarmAgent(Agent):
     # Xavi: Function triggered when called function from GRPC to start the consensus protocol
     def start_consensus(self, roles, startOrStop):
         for role in roles:
+            self.reached_consensus = False
             task = Job()
             task.set_job_id(role)
             task.set_min_or_max(startOrStop)
@@ -467,7 +469,11 @@ class SwarmAgent(Agent):
         for p in incoming.proposals:
             job = self.queues.job_queue.get_job(job_id=p.job_id)
             #print(f"{self.agent_id} received commit for job {p.job_id} from {incoming.agents[0].agent_id} for job to run in {p.agent_id}.")
-
+            if job is None:
+                quorum_count = (len(self.neighbor_map) // 2) + 1
+                if len(p.commits) >= quorum_count:
+                    self.reached_consensus = True
+                    print(f"Agent{self.agent_id}: they reached quorum!")
             if job is not None:
                 # Xavi: Commented this because jobs (roles) can be re-added to the pool.
                 '''if self.is_job_completed(job_id=job.get_job_id()):
