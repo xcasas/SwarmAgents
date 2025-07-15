@@ -508,11 +508,13 @@ class SwarmAgent(Agent):
                         # if self.outgoing_proposals.contains(job_id=p.job_id, p_id=p.p_id):
                         self.logger.info(f"[CON_LEADER] achieved for Job: {p.job_id} Leader: {proposal.agent_id}")
                         # Xavi: added decisions of whether the leader was selected. These decisions are sent back to Colmena through GRPC.
+                        self.reached_consensus = True
                         self.decisions[job.get_job_id()] = True
                         job.change_state(new_state=JobState.READY)
                         self.select_job(job)
                         # self.outgoing_proposals.remove_job(job_id=p.job_id)
                     else:
+                        self.reached_consensus = True
                         self.decisions[job.get_job_id()] = False
                         self.logger.info(f"[CON_PART] achieved for Job: {p.job_id} Leader: {p.agent_id}")
                         # job.change_state(new_state=JobState.COMMIT)

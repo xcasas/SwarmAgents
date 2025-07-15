@@ -156,7 +156,7 @@ class PolicyServiceServicer(policy_pb2_grpc.PolicyServiceServicer):
                                            usage=self.observer.calculate_usage())
 
 
-async def wait_for_decisions(observer, jobName, timeout=10, interval=1):
+async def wait_for_decisions(observer, jobName, timeout=20, interval=1):
     total_wait = 0
     while total_wait < timeout:
         decisions = observer.get_decisions()
