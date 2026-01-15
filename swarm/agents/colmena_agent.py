@@ -21,6 +21,7 @@
 #
 # Author: Komal Thareja(kthare10@renci.org)
 import os
+import sys
 import time
 import traceback
 
@@ -584,7 +585,7 @@ class ColmenaAgent(Agent):
             self.logger.error(f"save_neighbors failed: {e}", exc_info=True)
 
     def trigger_decision(self, role: Role):
-        print(f"[SELECTED]: {role.role_id} on agent: {self.agent_id}")
+        self.logger.info(f"[SELECTED]: {role.role_id} on agent: {self.agent_id}")
 
         role.leader_id = self.agent_id
         self.role.state = ObjectState.READY
